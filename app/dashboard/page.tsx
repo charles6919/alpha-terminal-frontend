@@ -34,6 +34,8 @@ export default function DashboardPage() {
     setError(null);
     try {
       await summaryApi.runPipeline();
+      // 파이프라인 완료 후 약간의 지연을 두고 조회 (in-memory 저장 완료 대기)
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await fetchSummaries();
     } catch (e) {
       console.error('[pipeline] error:', e);
