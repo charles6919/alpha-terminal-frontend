@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDashboard } from '@/features/dashboard/application/hooks/useDashboard'
 import { useWatchlist } from '@/features/watchlist/application/hooks/useWatchlist'
 import StockSummaryCard from '../components/StockSummaryCard'
@@ -10,6 +10,12 @@ const MARKET_BADGE: Record<string, string> = {
     KOSDAQ: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
     NASDAQ: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
     NYSE:   'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+}
+
+const SENTIMENT_BADGE: Record<string, string> = {
+    POSITIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    NEGATIVE: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    NEUTRAL: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
 }
 
 function MarketBadge({ market }: { market?: string | null }) {
@@ -22,15 +28,69 @@ function MarketBadge({ market }: { market?: string | null }) {
     )
 }
 
+function formatAnalyzedAt(value: string) {
+    return new Intl.DateTimeFormat('ko-KR', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(value))
+}
+
 export default function DashboardPage() {
-    const { summaries, isLoading: isSummaryLoading, error: summaryError, pipelineResult, executePipeline } = useDashboard()
+    const {
+        summaries,
+        analysisLogs,
+        isLoading: isSummaryLoading,
+        error: summaryError,
+        pipelineResult,
+        executePipeline,
+    } = useDashboard()
     const { items, isLoading: isWatchlistLoading, error: watchlistError } = useWatchlist()
     const [running, setRunning] = useState(false)
+    const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
+    const [hasInitializedSelection, setHasInitializedSelection] = useState(false)
+
+    useEffect(() => {
+        const itemSymbols = items.map((item) => item.symbol)
+
+        if (itemSymbols.length === 0) {
+            setSelectedSymbols([])
+            setHasInitializedSelection(false)
+            return
+        }
+
+        setSelectedSymbols((prev) => {
+            if (!hasInitializedSelection) return itemSymbols
+            return prev.filter((symbol) => itemSymbols.includes(symbol))
+        })
+        setHasInitializedSelection(true)
+    }, [items, hasInitializedSelection])
+
+    const selectedCount = selectedSymbols.length
+    const allSelected = items.length > 0 && selectedCount === items.length
+
+    const handleSelectSymbol = (symbol: string, checked: boolean) => {
+        setSelectedSymbols((prev) => {
+            if (checked) {
+                return prev.includes(symbol) ? prev : [...prev, symbol]
+            }
+            return prev.filter((item) => item !== symbol)
+        })
+    }
+
+    const handleSelectAll = (checked: boolean) => {
+        setSelectedSymbols(checked ? items.map((item) => item.symbol) : [])
+    }
 
     const handleRunPipeline = async () => {
+        if (selectedSymbols.length === 0) return
         setRunning(true)
-        await executePipeline()
-        setRunning(false)
+        try {
+            await executePipeline(selectedSymbols)
+        } finally {
+            setRunning(false)
+        }
     }
 
     const allSkipped = pipelineResult && pipelineResult.processed.every((p) => p.skipped)
@@ -44,13 +104,15 @@ export default function DashboardPage() {
                 </div>
                 <button
                     onClick={handleRunPipeline}
-                    disabled={running || isSummaryLoading}
+                    disabled={running || isSummaryLoading || selectedSymbols.length === 0}
                     className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 transition-colors flex items-center gap-2"
                 >
                     {running && (
                         <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     )}
-                    {running ? 'AI 분석 중... (30초~1분 소요)' : '최신 분석 실행'}
+                    {running
+                        ? `선택 종목 AI 분석 중... (${selectedSymbols.length}개)`
+                        : `선택 종목 분석 (${selectedSymbols.length}개)`}
                 </button>
             </header>
 
@@ -111,10 +173,26 @@ export default function DashboardPage() {
 
             {/* 관심종목 목록 */}
             <section className="mb-10">
-                <h2 className="text-lg font-semibold mb-3">
-                    관심종목{' '}
-                    <span className="text-sm font-normal text-gray-500">({items.length})</span>
-                </h2>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-lg font-semibold">
+                        관심종목{' '}
+                        <span className="text-sm font-normal text-gray-500">({items.length})</span>
+                    </h2>
+
+                    {items.length > 0 && (
+                        <div className="flex items-center gap-3 text-sm text-gray-500">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={(e) => handleSelectAll(e.target.checked)}
+                                />
+                                <span>전체 선택</span>
+                            </label>
+                            <span>선택 {selectedCount}/{items.length}</span>
+                        </div>
+                    )}
+                </div>
 
                 {watchlistError && (
                     <p className="mb-2 text-sm text-red-500">{watchlistError}</p>
@@ -138,15 +216,104 @@ export default function DashboardPage() {
                         {items.map((item) => (
                             <div
                                 key={item.id}
-                                className="flex flex-col gap-1.5 px-4 py-3 border border-gray-200 rounded-lg dark:border-gray-700"
+                                className={`flex flex-col gap-2 rounded-lg border px-4 py-3 transition-colors ${
+                                    selectedSymbols.includes(item.symbol)
+                                        ? 'border-blue-500 bg-blue-50/60 dark:border-blue-400 dark:bg-blue-950/30'
+                                        : 'border-gray-200 dark:border-gray-700'
+                                }`}
                             >
                                 <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSymbols.includes(item.symbol)}
+                                        onChange={(e) => handleSelectSymbol(item.symbol, e.target.checked)}
+                                    />
                                     <span className="font-mono text-sm font-semibold text-gray-500">{item.symbol}</span>
                                     <MarketBadge market={item.market} />
                                 </div>
                                 <span className="font-medium text-sm">{item.name}</span>
                             </div>
                         ))}
+                    </div>
+                )}
+            </section>
+
+            {/* 최근 AI 분석 로그 */}
+            <section className="mb-10">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-lg font-semibold">최근 AI 분석 로그</h2>
+                        <p className="text-sm text-gray-500">가장 최근에 생성된 AI 분석 내용부터 확인할 수 있습니다.</p>
+                    </div>
+                    {analysisLogs.length > 0 && (
+                        <span className="text-xs text-gray-500">{analysisLogs.length}개 로그</span>
+                    )}
+                </div>
+
+                {isSummaryLoading ? (
+                    <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-28 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                        ))}
+                    </div>
+                ) : analysisLogs.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-300 px-6 py-10 text-center dark:border-gray-600">
+                        <p className="mb-4 text-gray-500">아직 누적된 분석 로그가 없습니다.</p>
+                        <button
+                            onClick={handleRunPipeline}
+                            disabled={running || selectedSymbols.length === 0}
+                            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 transition-colors"
+                        >
+                            선택 종목 분석
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {analysisLogs.map((log, index) => {
+                            const sentimentClass = SENTIMENT_BADGE[log.sentiment] ?? SENTIMENT_BADGE.NEUTRAL
+                            return (
+                                <article
+                                    key={`${log.symbol}-${log.analyzed_at}-${index}`}
+                                    className="rounded-lg border border-gray-200 bg-white/60 px-4 py-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+                                >
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-mono text-sm font-semibold text-gray-600 dark:text-gray-300">
+                                                {log.symbol}
+                                            </span>
+                                            <span className="text-sm font-medium">{log.name}</span>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${sentimentClass}`}>
+                                                {log.sentiment}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {formatAnalyzedAt(log.analyzed_at)}
+                                        </div>
+                                    </div>
+
+                                    <p className="mb-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                        {log.summary}
+                                    </p>
+
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {log.tags.map((tag) => (
+                                            <span
+                                                key={`${log.symbol}-${log.analyzed_at}-${tag}`}
+                                                className="rounded-full bg-blue-50 px-2 py-1 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                                            >
+                                                #{tag}
+                                            </span>
+                                        ))}
+                                        <span className="text-gray-500">
+                                            신뢰도 {(log.confidence * 100).toFixed(0)}%
+                                        </span>
+                                        <span className="text-gray-500">
+                                            감성 점수 {log.sentiment_score.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </article>
+                            )
+                        })}
                     </div>
                 )}
             </section>
@@ -175,10 +342,10 @@ export default function DashboardPage() {
                             ) : (
                                 <button
                                     onClick={handleRunPipeline}
-                                    disabled={running}
+                                    disabled={running || selectedSymbols.length === 0}
                                     className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                 >
-                                    최신 분석 실행
+                                    선택 종목 분석
                                 </button>
                             )}
                         </div>
