@@ -1,24 +1,43 @@
-"use client";
+"use client"
 
-import { clientEnv } from "@/infrastructure/config/env";
-import KakaoLoginButton from "@/components/KakaoLoginButton";
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/features/auth/application/hooks/useAuth"
+import { KakaoLoginButton } from "@/features/auth/ui/components/LoginButton"
+
+const oauthButtons = [
+    <KakaoLoginButton key="kakao" />,
+    // 추가 OAuth 버튼은 여기에
+]
 
 export default function LoginPage() {
-  const kakaoHref = clientEnv.apiBaseUrl + clientEnv.kakaoLoginPath;
+    const { state } = useAuth()
+    const router = useRouter()
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-md p-8 flex flex-col items-center gap-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Alpha Desk</h1>
-          <p className="mt-1 text-sm text-gray-500">로그인하여 서비스를 이용하세요</p>
-        </div>
+    useEffect(() => {
+        if (state.status === "AUTHENTICATED") {
+            router.push("/")
+        }
+    }, [state.status, router])
 
-        <div className="w-full flex flex-col gap-3">
-          <KakaoLoginButton href={kakaoHref} />
-          {/* 추후 Google, Naver, Meta 버튼 추가 */}
+    if (state.status === "LOADING") {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <p className="text-gray-500">인증 확인 중...</p>
+            </div>
+        )
+    }
+
+    if (state.status === "AUTHENTICATED") {
+        return null
+    }
+
+    return (
+        <div className="flex flex-col justify-center items-center h-screen gap-6">
+            <h1 className="text-2xl font-bold">로그인</h1>
+            <div className="flex flex-col gap-3">
+                {oauthButtons}
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    )
 }

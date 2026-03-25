@@ -289,6 +289,5 @@ sketch
 
 # exclude .DS_Store
 .DS_Store
-
 # claude
 .claude
