@@ -47,7 +47,7 @@ export async function runPipelineStream(
     symbols: string[] | undefined,
     onEvent: (event: PipelineProgressEvent) => void,
 ): Promise<RunPipelineStreamResult> {
-    const res = await fetch(`${env.apiBaseUrl}/pipeline/run-stream`, {
+    const res = await fetch(`/api/pipeline/run-stream`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

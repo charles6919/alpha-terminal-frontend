@@ -6,9 +6,9 @@ import type { PipelineProgressEvent } from "../../domain/model/pipelineProgressE
 import {
     fetchAnalysisLogs,
     fetchDashboardSummaries,
-    fetchPipelineProgress,
     fetchReportSummaries,
     runPipeline,
+    runPipelineStream,
 } from "../../infrastructure/api/dashboardApi"
 import type { AnalysisLog, StockSummary, PipelineResult } from "../../domain/model/stockSummary"
 
@@ -68,42 +68,27 @@ export const useDashboard = () => {
         setElapsedSeconds(null)
 
         const startedAt = Date.now()
-        let polling = true
 
-        // /pipeline/progress 폴링 — 1.5초마다 메시지 갱신
-        const pollInterval = setInterval(async () => {
-            if (!polling) return
-            try {
-                const progress = await fetchPipelineProgress()
-                const events: PipelineProgressEvent[] = progress.messages.map((msg) => ({
-                    type: "progress",
-                    at: new Date().toISOString(),
-                    message: msg,
-                }))
-                setProgressEvents(events)
-                if (progress.done) {
-                    polling = false
-                    clearInterval(pollInterval)
-                }
-            } catch {
-                // 폴링 오류는 무시 (파이프라인 실행 중 일시적 실패 가능)
-            }
-        }, 1500)
+        const onEvent = (event: PipelineProgressEvent) => {
+            setProgressEvents((prev) => [...prev, event])
+        }
 
         try {
-            const result = await runPipeline(symbols)
-            polling = false
-            clearInterval(pollInterval)
+            const streamResult = await runPipelineStream(symbols, onEvent)
+
+            if (!streamResult.used) {
+                // SSE 미지원 시 폴백
+                const result = await runPipeline(symbols)
+                setPipelineResult(result)
+            } else if (streamResult.streamError) {
+                setError(streamResult.streamError)
+            }
+
             setElapsedSeconds(Math.round((Date.now() - startedAt) / 1000))
-            setPipelineResult(result)
             await load()
-            setProgressEvents([])
         } catch (err) {
-            polling = false
-            clearInterval(pollInterval)
             setElapsedSeconds(Math.round((Date.now() - startedAt) / 1000))
             setError(formatPipelineError(err))
-            setProgressEvents([])
         }
     }, [load])
 
