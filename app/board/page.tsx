@@ -52,7 +52,10 @@ export default function BoardPage() {
                         <ul className="flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
                             {items.map((post) => (
                                 <li key={post.board_id}>
-                                    <div className="flex items-center justify-between px-5 py-4">
+                                    <Link
+                                        href={`/board/${post.board_id}`}
+                                        className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                    >
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {post.title}
@@ -61,7 +64,10 @@ export default function BoardPage() {
                                                 {post.nickname} · {new Date(post.created_at).toLocaleDateString("ko-KR")}
                                             </p>
                                         </div>
-                                    </div>
+                                        <svg className="ml-3 h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </Link>
                                 </li>
                             ))}
                         </ul>

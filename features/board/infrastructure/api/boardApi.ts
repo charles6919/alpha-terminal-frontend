@@ -1,8 +1,13 @@
 import { httpClient } from "@/infrastructure/http/httpClient"
-import type { BoardPost, BoardListResponse } from "../../domain/model/boardPost"
+import type { BoardListItem, BoardListResponse } from "../../domain/model/boardPost"
 
 export async function fetchBoardList(page = 1, size = 10): Promise<BoardListResponse> {
     const res = await httpClient.get(`/board/list?page=${page}&size=${size}`)
+    return res.json()
+}
+
+export async function fetchBoardPost(boardId: number): Promise<BoardListItem> {
+    const res = await httpClient.get(`/board/${boardId}`)
     return res.json()
 }
 
