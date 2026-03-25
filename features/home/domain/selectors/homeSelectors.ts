@@ -26,9 +26,15 @@ export function calcHomeStats(logs: AnalysisLog[]): HomeStats {
         total: logs.length,
     }
 
+    const seen = new Set<string>()
     const topPicks = logs
         .filter((l) => l.sentiment_score > 0)
         .sort((a, b) => b.sentiment_score * b.confidence - a.sentiment_score * a.confidence)
+        .filter((l) => {
+            if (seen.has(l.symbol)) return false
+            seen.add(l.symbol)
+            return true
+        })
         .slice(0, 3)
         .map((l) => ({
             symbol: l.symbol,
