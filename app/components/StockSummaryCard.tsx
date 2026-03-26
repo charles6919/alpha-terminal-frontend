@@ -73,9 +73,13 @@ export default function StockSummaryCard({
       {/* 종목명 + 출처 배지 + 감성 배지 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href={`/stock/${symbol}`} className="text-lg font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            {symbol}
-          </Link>
+          {url ? (
+            <span className="text-lg font-bold text-foreground">{symbol}</span>
+          ) : (
+            <Link href={`/stock/${symbol}`} className="text-lg font-bold text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              {symbol}
+            </Link>
+          )}
           <span className="text-sm text-gray-500">{name}</span>
           {source_type && SOURCE_LABEL[source_type] && (
             <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${SOURCE_STYLE[source_type]}`}>
