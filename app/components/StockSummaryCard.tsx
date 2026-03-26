@@ -13,9 +13,22 @@ interface StockSummaryCardProps {
   sentiment?: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
   sentiment_score?: number;
   confidence?: number;
+  source_type?: 'NEWS' | 'DISCLOSURE' | 'REPORT';
   url?: string;
   /** BL-FE-30/34: 일별 등락 히트맵(선택). asOf 생략 시 종목 시리즈 마지막 거래일 사용 */
   heatmap?: { item: HeatmapItem; weeks: number; asOf?: string | null };
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  NEWS: '뉴스',
+  DISCLOSURE: '공시',
+  REPORT: '재무',
+}
+
+const SOURCE_STYLE: Record<string, string> = {
+  NEWS: 'bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400',
+  DISCLOSURE: 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400',
+  REPORT: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
 }
 
 function tagLabel(tag: Tag): string {
@@ -38,6 +51,7 @@ const SENTIMENT_LABEL = {
 export default function StockSummaryCard({
   symbol, name, summary, tags,
   sentiment, sentiment_score, confidence,
+  source_type,
   url,
   heatmap,
 }: StockSummaryCardProps) {
@@ -47,11 +61,16 @@ export default function StockSummaryCard({
 
   const inner = (
     <>
-      {/* 종목명 + 감성 배지 */}
+      {/* 종목명 + 출처 배지 + 감성 배지 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-lg font-bold text-foreground">{symbol}</span>
           <span className="text-sm text-gray-500">{name}</span>
+          {source_type && SOURCE_LABEL[source_type] && (
+            <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${SOURCE_STYLE[source_type]}`}>
+              {SOURCE_LABEL[source_type]}
+            </span>
+          )}
         </div>
         {sentiment && (
           <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${SENTIMENT_STYLE[sentiment]}`}>
