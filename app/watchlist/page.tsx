@@ -10,6 +10,7 @@ import { useStockSearch } from '@/features/stock/application/hooks/useStockSearc
 import type { StockItem } from '@/features/stock/domain/model/stockItem'
 import { useClientPagination } from '@/features/shared/application/hooks/useClientPagination'
 import { useWatchlist } from '@/features/watchlist/application/hooks/useWatchlist'
+import { useAccountSettings } from '@/features/account/application/hooks/useAccountSettings'
 
 const MARKET_BADGE: Record<string, string> = {
     KOSPI:  'border-primary text-primary',
@@ -31,8 +32,10 @@ function MarketBadge({ market }: { market?: string | null }) {
 export default function WatchlistPage() {
     const { items, isLoading, error, add, remove } = useWatchlist()
     const { results, isLoading: isSearching, error: searchError, query, search, clear } = useStockSearch()
+    const { isWatchlistPublic, isLoading: isSettingsLoading, isSaving, toggle: togglePublic } = useAccountSettings()
     const [registering, setRegistering] = useState<string | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; symbol: string; name: string } | null>(null)
+    const [showPublicConsent, setShowPublicConsent] = useState(false)
 
     const watchlistSymbols = useMemo(() => items.map((i) => i.symbol), [items])
     const { bySymbol: heatmapBySymbol, data: heatmapData } = useDailyReturnsHeatmap(watchlistSymbols, 6)
@@ -74,6 +77,83 @@ export default function WatchlistPage() {
                     관심종목 등록 및 관리
                 </div>
             </div>
+
+            {/* 공개 설정 */}
+            {!isSettingsLoading && (
+                <section className="mb-6 border border-outline-variant bg-surface-container px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <div className="font-mono text-xs font-bold text-on-surface uppercase tracking-widest">
+                                PUBLIC_FEED 참여
+                            </div>
+                            <div className="font-mono text-xs text-on-surface-variant mt-0.5">
+                                홈 화면 공개 피드에 내 관심종목 기반 AI 분석이 포함됩니다.
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => {
+                                if (!isWatchlistPublic) {
+                                    setShowPublicConsent(true)
+                                } else {
+                                    togglePublic(false)
+                                }
+                            }}
+                            className={`shrink-0 font-mono text-xs px-3 py-1.5 border uppercase font-bold transition-none ${
+                                isWatchlistPublic
+                                    ? "bg-primary border-primary text-white hover:opacity-80"
+                                    : "border-outline text-on-surface-variant hover:bg-surface-container-high"
+                            } ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                            {isSaving ? "저장 중..." : isWatchlistPublic ? "공개 중" : "비공개"}
+                        </button>
+                    </div>
+                </section>
+            )}
+
+            {/* 개인정보 동의 모달 */}
+            {showPublicConsent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <button
+                        className="absolute inset-0 bg-black/70"
+                        onClick={() => setShowPublicConsent(false)}
+                        aria-label="닫기"
+                    />
+                    <div className="relative z-10 w-full max-w-sm mx-4 border-2 border-primary bg-surface-container-lowest p-6">
+                        <div className="font-mono text-xs font-bold text-primary uppercase tracking-widest mb-4">
+                            PUBLIC_FEED 참여 안내
+                        </div>
+                        <p className="font-mono text-sm text-on-surface mb-3 leading-relaxed">
+                            공개 피드에 참여하면 내 관심종목 기반 AI 분석 결과가 비로그인 사용자에게도 표시됩니다.
+                        </p>
+                        <ul className="font-mono text-xs text-on-surface-variant mb-5 space-y-1.5 border border-outline-variant px-4 py-3">
+                            <li>· 누가 어떤 종목을 등록했는지는 공개되지 않습니다</li>
+                            <li>· AI 분석 요약, 감성 점수, 태그만 집계됩니다</li>
+                            <li>· 설정은 언제든 워치리스트에서 변경할 수 있습니다</li>
+                        </ul>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowPublicConsent(false)}
+                                className="flex-1 font-mono text-sm border border-outline-variant px-3 py-2 text-on-surface-variant hover:bg-surface-container-high uppercase"
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    togglePublic(true)
+                                    setShowPublicConsent(false)
+                                }}
+                                className="flex-1 font-mono text-sm border border-primary bg-primary text-white px-3 py-2 hover:opacity-90 uppercase font-bold"
+                            >
+                                동의하고 공개
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 검색 UI */}
             <section className="mb-8">
