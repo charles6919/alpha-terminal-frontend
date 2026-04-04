@@ -26,7 +26,24 @@ async function handler(
     method: request.method,
     headers: requestHeaders,
     body: body,
+    redirect: "manual",
   });
+
+  // 리다이렉트 응답은 브라우저에 직접 전달
+  if (backendResponse.status >= 300 && backendResponse.status < 400) {
+    const location = backendResponse.headers.get("location");
+    if (location) {
+      const redirectHeaders = new Headers();
+      const setCookies = backendResponse.headers.getSetCookie();
+      for (const c of setCookies) {
+        redirectHeaders.append("set-cookie", c);
+      }
+      return NextResponse.redirect(location, {
+        status: backendResponse.status,
+        headers: redirectHeaders,
+      });
+    }
+  }
 
   const responseHeaders = new Headers();
   const ct = backendResponse.headers.get("content-type");
