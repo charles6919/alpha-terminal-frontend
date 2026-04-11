@@ -1,5 +1,5 @@
 # Base image를 ARM64로 명시
-FROM --platform=linux/arm64 node:20-alpine
+FROM node:20-alpine
 
 # 작업 디렉토리 설정
 WORKDIR /app
