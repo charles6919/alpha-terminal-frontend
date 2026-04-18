@@ -129,6 +129,9 @@ export default function Navbar() {
                                         ) : null}
                                     </div>
                                 )}
+                                <Link href="/profile" className={navbarStyles.loginButton}>
+                                    프로필
+                                </Link>
                                 <button
                                     type="button"
                                     onClick={handleLogout}
@@ -247,6 +250,13 @@ export default function Navbar() {
                                 onClick={closeMobile}
                             >
                                 영상
+                            </Link>
+                            <Link
+                                href="/profile"
+                                className={drawerLinkClass("/profile")}
+                                onClick={closeMobile}
+                            >
+                                프로필
                             </Link>
 
                             {state.status === "AUTHENTICATED" && (
