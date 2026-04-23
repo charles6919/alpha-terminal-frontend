@@ -11,3 +11,32 @@ export interface AdminStats {
     avg_dwell_time_seconds: number | null
     ctr: number | null
 }
+
+export interface AdminUserItem {
+    id: number
+    nickname: string
+    email: string
+    role: "NORMAL" | "ADMIN"
+    created_at: string
+}
+
+export interface AdminUsersResponse {
+    users: AdminUserItem[]
+    total: number
+}
+
+export interface AdminLogItem {
+    id: number
+    symbol: string
+    name: string
+    analyzed_at: string
+    sentiment: string
+    sentiment_score: number
+    source_type: string | null
+    account_id: number | null
+}
+
+export interface AdminLogsResponse {
+    logs: AdminLogItem[]
+    total: number
+}
