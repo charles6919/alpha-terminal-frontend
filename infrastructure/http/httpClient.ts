@@ -1,7 +1,7 @@
 import { env } from "@/infrastructure/config/env"
 import { readApiError } from "./apiError"
 
-const TIMEOUT_MS = 15_000
+const TIMEOUT_MS = 60_000
 
 async function ensureOk(res: Response): Promise<Response> {
     if (!res.ok) throw await readApiError(res)
